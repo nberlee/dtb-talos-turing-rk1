@@ -1,0 +1,52 @@
+name: dtb-artifact
+
+env:
+  UPSTREAM_PKG: siderolabs/pkgs
+  UPSTREAM_PKG_VERSION: v1.9.0
+
+on:
+  push:
+    branches: [ 'main', 'release-*' ]
+    tags:
+      - "v*"
+
+jobs:
+  dtb:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up buildx
+        uses: docker/setup-buildx-action@v3
+        #with:
+        #  version: v0.19.1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pick selective files from pkgs
+        run: |
+          curl -Lo pkgs.tar.gz https://github.com/${{ env.UPSTREAM_PKG }}/archive/refs/tags/${{ env.UPSTREAM_PKG_VERSION }}.tar.gz
+          ROOTDIR=$(tar -tf pkgs.tar.gz | head -1 | cut -d'/' -f1)
+          tar -xf pkgs.tar.gz --strip-components=1  $ROOTDIR/kernel/build/patches $ROOTDIR/Pkgfile
+          rm pkgs.tar.gz
+
+      - name: Build and push dtb turingrk1 artifact
+        run: make
+        env:
+          PUSH: '1'
+          USERNAME: ${{ github.actor }}
+          PLATFORM: linux/arm64
+          PROGRESS: plain
+          CI_ARGS: "--cache-from=ghcr.io/${{ github.actor }}/dtb-talos-turing-rk1:cache --cache-to=ghcr.io/${{ github.actor }}/dtb-talos-turing-rk1:cache"
+

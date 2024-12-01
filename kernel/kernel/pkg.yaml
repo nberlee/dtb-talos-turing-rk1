@@ -1,0 +1,18 @@
+name: dtb-talos-turing-rk1
+variant: scratch
+shell: /toolchain/bin/bash
+dependencies:
+  - stage: dtb-build
+steps:
+  - env:
+      ARCH: arm64
+    install:
+      - |
+        cd /src
+
+        mkdir -p /rootfs/dtb/rockchip
+
+        mv rk3588-turing-rk1.dtb /rootfs/dtb/rockchip/rk3588-turing-rk1.dtb
+finalize:
+  - from: /rootfs
+    to: /
